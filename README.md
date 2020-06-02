@@ -1,7 +1,29 @@
-VPU OpenMX IL software and drivers
+# VPU OpenMX IL software and drivers
 =====================================
-Build Process:
-==============
+## File list:
+----------
+     |- project.omx
+        |- libomxil-bellagio-0.9.3 OMXIL bellagio	V.0.8.3 source code
+        |- openmax_il 					OpenMax IL on Android
+     |- vc800d						VC8000 decoder driver and source code
+     |- vc800e 						VC8000 encoder driver and source code
+
+## Gerrit commands:
+----------------
+* clone:
+
+        export project=omx_il
+        git clone "ssh://<name>@gerrit.<domian>:29418/$project"
+        scp -p -P 29418 cj.chang@gerrit.<domian>:hooks/commit-msg "$project/.git/hooks/"
+* commit:
+        cd $project
+        git add .
+        git commit -s -m"<comments>"
+        git push origin HEAD:refs/for/master
+
+## Build Process:
+------------------
+
 
 0. Preparation:
 --------------
@@ -12,10 +34,14 @@ Build Process:
 1. ENCODER
 --------------
 
-1.1 Build library and testbench for ARM+CModel
+* 1.1 Build library and testbench for ARM+CModel
  
-  make clean $TARGET ENV=arm_pclinux USE_EXTERNAL_BUFFER=y RELEASE=y USE_64BIT_ENV=y USE_MODEL_LIB=./cmodel_lib_arm64/libvc8kd.a
+  make clean $TARGET ENV=arm_pclinux USE_EXTERNAL_BUFFER=y RELEASE=y USE_64BIT_ENV=y 
+
+USE_MODEL_LIB=./cmodel_lib_arm64/libvc8kd.a
+
  Available targets:
+
   vp9dec          - VP9 decoder command line binary
   hevcdec         - HEVC decoder command line binary
   libg2hw.a       - G2 decoder system model library
@@ -31,7 +57,7 @@ Build Process:
   vp6dec          - VP6 decoder command line binary
   vp8dec          - VP7/8 decoder command line binary
 
-1.2 Build Driver
+* 1.2 Build Driver
 
 (a) hantrodec.ko
   cd software/linux/ldriver
@@ -41,11 +67,11 @@ Build Process:
   cd software/linux/ldriver
   make ARCH=arm64
 
-2.DECODER
+
+2. DECODER
 ------------
 
-Build Driver
-------------
+* 2.1 Build Driver
 
 vi vc8000e/software/build/globalrules
 vi vc8000e/software/linux_reference/Baseaddress
@@ -58,7 +84,7 @@ make ARCH=arm64
 cd vc8000e/software/linux_reference/memalloc
 make ARCH=arm64
 
-Build Test
+* 2.2 Build Test
 -------------------
 
 (a)hevc_testenc
@@ -71,45 +97,34 @@ make versatile
 3. OpenMX project
 -------------------
 
-3.1 OMX_IL decoder:
+* 3.1 OMX_IL decoder:
 --------------		
 
 cd ~/omx_il/project.omx/openmax_il/source/decoder
+
 (1). build libraries
+
 build_dec_libs.sh arm_pclinux 64
 > ~/omx_il/vc8000d/out/arm_linux/debug/avsdec,libdwl.a ....
+
 (2). build OMX IL Decoder component
+
 > libOMX.hantro.VC8000D.video.decoder.so
 > libOMX.hantro.VC8000D.image.decoder.so
 
-OMX_IL encoder
+
+* 3.2 OMX_IL encoder
 --------------
 make arm ENCODER_API_VERSION=vc8000e [variables]"
 
 
 
-File list:
-----------
-     |- project.omx
-        |- libomxil-bellagio-0.9.3 OMXIL bellagio	V.0.8.3 source code
-        |- openmax_il 					OpenMax IL on Android
-     |- vc800d						VC8000 decoder driver and source code
-     |- vc800e 						VC8000 encoder driver and source code
 
-Gerrit commands:
-----------------
-* clone:
+## Test
+--------
 
-        export project=omx_il
-        git clone "ssh://cj.chang@gerrit.siengine.com:29418/$project"
-        scp -p -P 29418 cj.chang@gerrit.siengine.com:hooks/commit-msg "$project/.git/hooks/"
-* commit:
-        cd $project
-        git add .
-        git commit -s -m"<comments>"
-        git push origin HEAD:refs/for/master
 
-History:
+## History:
 ---------
 2020/05/26
 
