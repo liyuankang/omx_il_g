@@ -1,0 +1,98 @@
+#                   (C) COPYRIGHT 2014 VERISILICON
+#                            ALL RIGHTS RESERVED
+#
+#File: globaldefs
+#
+
+#########################################################
+#  Section: OS environment
+#########################################################
+# 1. Build SW in 32bit instruction on 64bit OS
+#    Default:  64bit OS built 64bit instructions,
+#               32bit OS built 32bit instructions
+#    USE_32BIT=y to build 32bit instruction on 64bit OS
+USE_32BIT=n
+
+# 2. EWL to use POLLING or IRQ to communicate with driver
+#    POLLING = y: don't use IRQs
+ifeq (pci,$(findstring pci, $(MAKECMDGOALS)))
+POLLING = y
+else
+POLLING = n
+endif
+
+# 3. Assemble C Code
+# ASM = y: Enable Intel SSE/AVX2
+ASM = n
+
+# 4. Profiling
+# PROFILE = y: Enable -pg for profiling function timecost
+PROFILE = n
+
+#########################################################
+#  Section: Debug/Verification purpose environment section
+#               This section should be disabled in production
+#########################################################
+# 1. Comment/uncomment the following line to disable/enable debugging
+DEBUG = n
+
+# 2. Enable C-Model to have tracefile generated
+#     Used for HW verification purpose
+TRACE = y
+
+# 3. Include API extension and test ID for internal testing
+#     SW has capbility for specific test case ID
+INTERNAL_TEST = y
+
+# 5. To add coverage check of code usage and data range
+DAT_COVERAGE = n
+USE_COVERAGE = n
+
+#########################################################
+#  Section: SW/HW functions section
+#           Features control correspond with HW IP
+#########################################################
+# 1. Comment/uncomment the following lines to define which control codes to
+#    To include in the library build
+INCLUDE_HEVC = y
+INCLUDE_VP9 = n
+INCLUDE_JPEG = y
+INCLUDE_VS = y
+
+# 2. Input line buffer low latency
+#    Set PCIE FPGA Verification env
+#    Test hardware handshake mode of input line buffer
+PCIE_FPGA_VERI_LINEBUF=n
+
+# 3. Configure encoder SW/testbeach support cache&shaper or not
+#    System should have L2-Cache IP integrated
+SUPPORT_CACHE = n
+
+# 4. Referene frame read/write 1KB burst size
+RECON_REF_1KB_BURST_RW = n
+
+# 5. Configure encoder SW/testbeach support DEC400 or not
+#    System should have DEC400 IP integrated
+SUPPORT_DEC400 = n
+
+# 6. Configure encoder SW/testbeach support MMU or not
+#    System should have MMU IP integrated
+SUPPORT_MMU = n
+
+#########################################################
+#   Section: customized features section
+#            one customer correspond feature to control
+#            group of features
+#########################################################
+# 1. FB customized section
+FB_FEATURE_ENABLE = n
+ifeq ($(FB_FEATURE_ENABLE),y)
+  RECON_REF_1KB_BURST_RW = y
+  SUPPORT_CACHE = n
+endif
+
+# 2. TBH customized section
+TBH_FEATURE_ENABLE = n
+ifeq ($(TBH_FEATURE_ENABLE),y)
+  RECON_REF_ALIGN64 = y
+endif

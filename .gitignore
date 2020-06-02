@@ -1,0 +1,14 @@
+vc8000d\out\
+vc8000d\works\
+*.o
+*.ko
+*.mod
+*.cmd
+vc8000e\software\linux_reference\test
+vc8000e\software\verify
+vc8000d\binary
+vc8000d\cmodel_lib
+vc8000d\cmodel_lib_arm64
+vc8000d\system
+vc8000d\sodtware\test
+.dependent

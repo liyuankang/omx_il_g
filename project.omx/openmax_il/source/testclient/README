@@ -1,0 +1,76 @@
+Setup for 7280/8270/8290/H1/H2 OpenMAX IL component testing
+============================================================
+
+1. Build the encoder library
+
+1A. Testing with HW model (HW model library must be available)
+-Check from <encoder version>_encoder/software/linux_reference/Makefile that codecs selected match your HW configuration
+
+-Go to folder <encoder version>_encoder/system and run
+>make system
+
+
+1B. Testing with actual HW
+-Check from <encoder version>_encoder/software/linux_reference/Makefile that codecs selected match your HW configuration
+-Check that target 'versatile' is configured for your platform
+-Check also Makefiles under folder <encoder version>_encoder/software/linux_reference/test/<codec> have the correct
+configuration for target 'versatile'
+
+-Build encoder SW library
+>make versatile
+
+-Build encoder binaries
+>make versatile_tb
+-Copy all binaries to one location, for example <encoder version>_encoder/system
+
+
+2. Get Bellagio OMX core. (http://omxil.sourceforge.net/)
+-Copy libomxil-bellagio-0.9.3.tar.gz to same location with openmax_il folder
+-Extract the archive.
+>tar xvf libomxil-bellagio-0.9.3.tar.gz
+ 
+
+3. Install Bellagio to libomxil-bellagio-0.9.3/build folder.
+>mkdir libomxil-bellagio-0.9.3/build
+>cd libomxil-bellagio-0.9.3/
+
+-For 32-bit build configuration, use command line
+>./configure --prefix=<where-your-code-is>/libomxil-bellagio-0.9.3/build CFLAGS=-m32 CXXFLAGS=-m32 LDFLAGS=-m32
+
+-64-bit build is configured with command line (requires 64-bit Linux OS)
+>./configure --prefix=<where-your-code-is>/libomxil-bellagio-0.9.3/build
+
+-Build and install
+>make
+>make install
+
+
+4. Build and install OMX component
+-Edit omxil/source/encoder/Makefile
+    *Check that BELLAGIO_ROOT parameter points to Bellagio folder
+    *Select correct HW API version
+    *Select 32-bit or 64-bit platform
+>make
+>make install
+
+5. Set environment variables
+>setenv SYSTEM_MODEL_HOME <encoder version>_encoder/system      - set to point 7280/8270/8290/H1/H2 encoder binaries
+>setenv TEST_DATA_HOME /tmp/data                                - set to point where reference data is created
+>setenv YUV_SEQUENCE_HOME testdata_customer/H1                  - set to point the input data (H1 is common folder for all codecs)
+
+
+6. Compile testclient
+-Edit omxil/source/testclient/Makefile
+    *Check that BELLAGIO_ROOT parameter points to Bellagio folder
+    *Select correct HW API version
+    *Select 32-bit or 64-bit platform
+>make
+
+
+7. Run tests 
+>./test_mpeg4.sh [ 990 | 990 996 | all ] (7280_encoder)
+>./test_h264.sh [ 1900 | 1900 1908 | all ] (case 1908 is not valid for 8290 encoder)
+>./test_jpeg.sh [ 2990 | 2990 2995 | all ]
+>./test_vp8.sh [ 3000 | 3000 3009 | all ] (H1_encoder)
+>./test_webp.sh [ 4000 | 4000 4004 | all ] (H1_encoder)
+>./test_hevc.sh [ 5000 | 5000 5008 | all ] (H2_encoder)
