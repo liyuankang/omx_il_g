@@ -76,8 +76,8 @@ KDIR_BASE := /afs/hantro.com/projects/Testing/Board_Version_Control
 #KDIR := $(KDIR_BASE)/Realview_PB/PB926EJS/SW/Linux/linux-2.6.28-arm1/v0_1/linux-2.6.28-arm1
 #KDIR := $(KDIR_BASE)/SW_Common/ARM_realview_v6/2.6.28-arm1/v0_1-v6/linux-2.6.28-arm1
 
-KVER := $(shell uname -r)
-KDIR := /lib/modules/$(KVER)/build
+#KVER := $(shell uname -r)
+#KDIR := /lib/modules/$(KVER)/build
 
 PWD		:= $(shell pwd)
 DEST		:= /lib/modules/$(KERNELRELEASE)/$(MDIR)

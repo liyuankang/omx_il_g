@@ -554,7 +554,7 @@ void DWLConfigureShaperChannel(const void *instance, i32 core_id, PpUnitIntConfi
   addr_t pp_base_address = 0;
 #endif
   u32 rgb_flag = 0;
-  u32 max_lu_height, max_ch_height;
+  u32 max_lu_height=0, max_ch_height=0;
   u32 is_top_field = ((DWLReadReg(instance, core_id, 4 * 3)) >> 19) & 0x01;
   u32 pp_field_offset, pp_field_offset_ch;
   struct DecHwFeatures hw_feature;

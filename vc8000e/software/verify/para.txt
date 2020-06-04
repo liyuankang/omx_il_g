@@ -1,0 +1,39 @@
+# Two I-Frame
+-I0 -R1 -b1
+# 6 Frames with I/P Frame interleave
+-I0 -R2 -b5
+# Two I-Frame with small QP=1
+-q1 -b1
+# Two I-Frame with small QP=1 chromaDletaQp=-3
+-q1 -b1 -I-3
+# Two I-Frame with large QP=51
+-q51 -b1
+# Two I-Frame with large QP=51 chromaDletaQp=3
+-q51 -b1 -I3
+# Multi-Slice (3 slice for each frame) for 4 frames
+-e3 -b4
+# rate control
+-b10 -B512000 -U1 -q-1
+# disable deblock
+-b2 -D1
+# deblock parameter
+-b2 -W-3 -E-3
+# disable sao
+-b2 -M0
+# ROI1
+-b2 -q26 --roi1Area=1:1:3:3 --roi1DeltaQp=-5
+# ROI1 with rate control
+-b10 -B512000 -U1 -q-1 --roi1Area=1:1:3:3 --roi1DeltaQp=-5
+# ROI1/ROI2
+-b5 -q26 --roi1Area=1:1:3:3 --roi1DeltaQp=-5 --roi2Area=2:2:5:4 --roi2DeltaQp=-8
+# ROI1/ROI2 with rate control
+-b10 -B512000 -U1 -q-1 --roi1Area=1:1:3:3 --roi1DeltaQp=-5 --roi2Area=2:2:5:4 --roi2DeltaQp=-8
+# ROI1 with multi-slice
+-e6 -b10 -B512000 -U1 -q-1 --roi1Area=1:1:3:3 --roi1DeltaQp=-5
+# ROIntra 
+-b3 --intraArea 1:1:2:3
+# enable HRD check
+-b10 -C1
+# disable strong_smoothing_intra_filter
+-b10 --smoothingIntra 0 
+

@@ -100,7 +100,7 @@ ifeq ($(shell uname -m),x86_64)
 endif
 
 ifeq ($(ENCODER_API_VERSION), vc8000e)
-	ENCODER_BASE_PATH = /workspace/vpusw01/home/cn9016/projects/alen_zhang_idcbj20_dev/VPU/H2/VC8000E6.2_DEV
+	ENCODER_BASE_PATH = /data/cj.chang/omx_il_g/vc8000e
 	ENCODER_RELEASE  = $(ENCODER_BASE_PATH)
 	MEMALLOC_RELEASE = $(ENCODER_BASE_PATH)/software/linux_reference/memalloc
 else ifeq ($(ENCODER_API_VERSION), h2v41)
@@ -297,7 +297,7 @@ pclinux: videolib imagelib
 .PHONY: arm
 arm: CC = aarch64-linux-gnu-gcc
 #arm: CFLAGS += -O2 -mtune=arm926ej-s -fpic -DMEMALLOCHW
-arm: LDFLAGS = -Wl
+#arm: LDFLAGS = -Wl
 arm: HANTRO_LIBS = $(ENCODER_SW)
 arm: videolib imagelib
 ifeq ($(ENCODER_API_VERSION), h2)

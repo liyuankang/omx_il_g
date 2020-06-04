@@ -132,8 +132,8 @@ pci: $(CACHELIB)
 
 versatile: ENVSET =
 
-versatile: CROSS_COMPILE = arm-none-linux-gnueabi-
-versatile: ARCH = -mcpu=arm926ej-s -mtune=arm926ej-s
+#versatile: CROSS_COMPILE = arm-none-linux-gnueabi-
+#versatile: ARCH = -mcpu=arm926ej-s -mtune=arm926ej-s
 versatile: $(CACHELIB)
 
 pcdemo: CFLAGS  = -O2 -g -Wall -D_GNU_SOURCE -D_REENTRANT -D_THREAD_SAFE \

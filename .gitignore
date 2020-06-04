@@ -1,6 +1,7 @@
 vc8000d\out\
 vc8000d\works\
 *.o
+*.a`
 *.ko
 *.mod
 *.cmd
@@ -11,4 +12,4 @@ vc8000d\cmodel_lib
 vc8000d\cmodel_lib_arm64
 vc8000d\system
 vc8000d\sodtware\test
-.dependent
+.depend

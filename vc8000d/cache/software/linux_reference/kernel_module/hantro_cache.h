@@ -37,8 +37,9 @@
 #else
 #  define PDEBUG(fmt, args...)  /* not debugging: nothing */
 #endif
-
+/* undefined for SE1000
 #define PCI_BUS
+*/
 
 /*Define Cache&Shaper Offset from common base*/
 #define SHAPER_OFFSET                    (0x8<<2)

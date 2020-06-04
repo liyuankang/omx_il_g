@@ -78,3 +78,4 @@ if [ "$1" == "arm_linux" ] ; then
     make -C ${DEC_PATH} jpegdec  ENV=arm_linux $build_option
     make -C ${DEC_PATH} ppdec    ENV=arm_linux $build_option
 fi
+

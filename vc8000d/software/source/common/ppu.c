@@ -511,7 +511,7 @@ u32 CheckPpUnitConfig(struct DecHwFeatures *hw_feature,
                             u32 interlace,
                             PpUnitIntConfig *ppu_cfg) {
   u32 i = 0;
-  u32 pp_width, ystride, cstride;
+  u32 pp_width, ystride=0, cstride=0;
   PpUnitIntConfig *ppu_cfg_temp = ppu_cfg;
   
   u32 crop_align = (1 << hw_feature->crop_step_rshift) - 1;

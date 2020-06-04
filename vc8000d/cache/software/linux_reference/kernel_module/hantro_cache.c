@@ -58,15 +58,14 @@ struct pci_dev *gDev = NULL;    /* PCI device structure. */
 unsigned long gBaseHdwr;        /* PCI base register address (Hardware address) */
 u32 gBaseLen;                   /* Base register address Length */
 unsigned long base_port = 0;
-static int g_hwid;
 #endif
-
+static int g_hwid = -1;		/* SE1000 */
 /*------------------------------------------------------------------------
 *****************************PORTING LAYER********************************
 -------------------------------------------------------------------------*/
 #define RESOURCE_SHARED_INTER_CORES        0
-#define CORE_0_IO_BASE                 0x640000//the base addr of core. for PCIE, it refers to offset from bar
-#define CORE_1_IO_BASE                 0x640000//the base addr of core. for PCIE, it refers to offset from bar
+#define CORE_0_IO_BASE                 0xe7810000//the base addr of core. for PCIE, it refers to offset from bar
+#define CORE_1_IO_BASE                 0xe7810000//the base addr of core. for PCIE, it refers to offset from bar
 
 #define CORE_2_IO_BASE                 0x740000//the base addr of core. for PCIE, it refers to offset from bar
 #define CORE_3_IO_BASE                 0x740000//the base addr of core. for PCIE, it refers to offset from bar
@@ -79,8 +78,8 @@ static int g_hwid;
 #define CORE_3_IO_SIZE                 ((5+5*16) * 4)    /* bytes *///shaper register size
 
 
-#define INT_PIN_CORE_0                    -1
-#define INT_PIN_CORE_1                    -1
+#define INT_PIN_CORE_0                    409 /* for SE1000 */
+#define INT_PIN_CORE_1                    409
 
 #define INT_PIN_CORE_2                    -1
 #define INT_PIN_CORE_3                    -1
@@ -91,9 +90,8 @@ CORE_CONFIG core_array[]= {
     //{VC8000E, CORE_1_IO_BASE, CORE_1_IO_SIZE, INT_PIN_CORE_1,DIR_WR}, //core_1 just support cache write for VC8000E
     {VC8000D_0, CORE_0_IO_BASE, CORE_0_IO_SIZE, INT_PIN_CORE_0,DIR_RD}, //core_0 just support cache read for VC8000D_0
     {VC8000D_0, CORE_1_IO_BASE, CORE_1_IO_SIZE, INT_PIN_CORE_1,DIR_WR}, //core_1 just support cache write for VC8000D_0
-    {VC8000D_1, CORE_2_IO_BASE, CORE_2_IO_SIZE, INT_PIN_CORE_2,DIR_RD}, //core_0 just support cache read for VC8000D_1
-    {VC8000D_1, CORE_3_IO_BASE, CORE_3_IO_SIZE, INT_PIN_CORE_3,DIR_WR} //core_1 just support cache write for VC8000D_1
-
+    //{VC8000D_1, CORE_2_IO_BASE, CORE_2_IO_SIZE, INT_PIN_CORE_2,DIR_RD}, //core_0 just support cache read for VC8000D_1
+    //{VC8000D_1, CORE_3_IO_BASE, CORE_3_IO_SIZE, INT_PIN_CORE_3,DIR_WR} //core_1 just support cache write for VC8000D_1
 };
 
 /*------------------------------END-------------------------------------*/
@@ -468,8 +466,10 @@ int __init cache_init(void)
         goto err1;  
 #endif
     cache_data = (cache_dev_t *)vmalloc(sizeof(cache_dev_t)*total_core_num);
-    if (cache_data == NULL)
-      goto err1;
+    if (cache_data == NULL) { /* CJ: fixed result used uninitilaized issue. */
+        result = -ENOMEM;
+        goto err1;
+    }
     memset(cache_data,0,sizeof(cache_dev_t)*total_core_num);
 
     for(i=0;i<total_core_num;i++)
@@ -611,7 +611,7 @@ static int ReserveIO(void)
     int hwid;
     int i;
     int hw_found = -1;
-    int version_found = 0; 
+    int version_found = 0; /*CJ: useless */ 
 
     for (i=0;i<total_core_num;i++)
     {

@@ -403,12 +403,14 @@ static long hantroenc_ioctl(struct file *filp,
         {
           u32 idx;
           SUBSYS_CORE_INFO in_data;
-          copy_from_user(&in_data, (void*)arg, sizeof(SUBSYS_CORE_INFO));
+          if (0 != copy_from_user(&in_data, (void*)arg, sizeof(SUBSYS_CORE_INFO)))
+            return -1; /* CJ add check return value */
           idx = in_data.type_info;
           if (idx > total_subsys_num - 1)
             return -1;
 
-          copy_to_user((void*)arg, &hantroenc_data[idx].subsys_data.core_info, sizeof(SUBSYS_CORE_INFO));
+          if (0 != copy_to_user((void*)arg, &hantroenc_data[idx].subsys_data.core_info, sizeof(SUBSYS_CORE_INFO)))
+            return -1; /*CJ add check return value */
           break;
         }
     case HX280ENC_IOCH_ENC_RESERVE: 
