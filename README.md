@@ -175,5 +175,12 @@
 2020/06/01
 
    Update cache driver in decoder.
+   
+2020/09/28
+	Update VC8000D ldriver
+	1.	Update base address to 0xe7802000, IRQ to 319
+	2.	Add enable_wraper_clocks function as alternative for  linux clk.
+	3.	Remove code for legacy codec (G1, G2)
+
 
 

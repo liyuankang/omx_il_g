@@ -43,7 +43,7 @@
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
 
-#define HXDEC_MAX_CORES                 4
+#define HXDEC_MAX_CORES                 2
 
 /* hantro G1 regs config including dec and pp */
 #define HANTRO_DEC_ORG_REGS             60
@@ -51,10 +51,7 @@
 
 #define HANTRO_DEC_EXT_REGS             27
 #define HANTRO_PP_EXT_REGS              9
-
-#define HANTRO_G1_DEC_TOTAL_REGS        (HANTRO_DEC_ORG_REGS + HANTRO_DEC_EXT_REGS)
-#define HANTRO_PP_TOTAL_REGS            (HANTRO_PP_ORG_REGS + HANTRO_PP_EXT_REGS)
-#define HANTRO_G1_DEC_REGS              155 /*G1 total regs*/
+#define HANTRO_PP_TOTAL_REGS			(HANTRO_PP_ORG_REGS + HANTRO_PP_EXT_REGS)
 
 #define HANTRO_DEC_ORG_FIRST_REG        0
 #define HANTRO_DEC_ORG_LAST_REG         59
@@ -66,52 +63,65 @@
 #define HANTRO_PP_EXT_FIRST_REG         146
 #define HANTRO_PP_EXT_LAST_REG          154
 
-/* hantro G2 reg config */
-#define HANTRO_G2_DEC_REGS              337 /*G2 total regs*/
-#define HANTRO_G2_DEC_FIRST_REG         0
-#define HANTRO_G2_DEC_LAST_REG          HANTRO_G2_DEC_REGS-1
-
+#define HANTRO_G2_DEC_REGS				337
 /* hantro VC8000D reg config */
 #define HANTRO_VC8000D_REGS             437 /*VC8000D total regs*/
 #define HANTRO_VC8000D_FIRST_REG        0
 #define HANTRO_VC8000D_LAST_REG         HANTRO_VC8000D_REGS-1
 
-/* Logic module IRQs */
-#define HXDEC_NO_IRQ                    -1
-
 #define MAX(a, b)                       (((a) > (b)) ? (a) : (b))
 
-#define DEC_IO_SIZE_MAX                 (MAX(MAX(HANTRO_G2_DEC_REGS, HANTRO_G1_DEC_REGS), HANTRO_VC8000D_REGS) * 4)
+#define DEC_IO_SIZE_MAX                 (HANTRO_VC8000D_REGS * 4)
 
 /* User should modify these configuration if do porting to own platform. */
 /* Please guarantee the base_addr, io_size, dec_irq belong to same core. */
 
 /* Defines use kernel clk cfg or not**/
-//#define CLK_CFG
+//#define CLK_CFG, undefined. Use CLOCK_WRAPER instead. 
 #ifdef CLK_CFG
 #define CLK_ID                          "hantrodec_clk"  /*this id should conform with platform define*/
+#else
+//Directly configure clock and reset registers
+#define CR_WRAP_TOP_BASE_ADDRESS    0x58100000
+#define CLK_VPU_DEC_AXI         	0x000c2100
+#define CLK_VPU_DEC_CORE        	0xc2104
+#define CLK_VPU_DEC_APB         	0xc2108
+#define CLK_VPU_ENC_AXI         	0xc210c
+#define CLK_VPU_ENC_CORE        	0xc2110
+#define CLK_VPU_ENC_APB         	0xc2114
+#define CLK_CG_EN                   0x00010000
+#define CLK_OUT_SEL                 0x00000100
+#define REG_VPU_DEC_AXI_RST_N       0xc3100
+#define REG_VPU_DEC_CORE_RST_N      0xc3104
+#define REG_VPU_DEC_APB_RST_N       0xc3108
+#define REG_VPU_ENC_AXI_RST_N       0xc310C
+#define REG_VPU_ENC_CORE_RST_N      0xc3110
+#define REG_VPU_ENC_APB_RST_N       0xc3114
+#define RST_N_MASK                  0xfffffffe
+#define RST_N_ASSERT                0x00000001
+
+#define ENABLE_CLOCK(clk_addr) \
+    iowrite32((CLK_CG_EN|CLK_OUT_SEL), (void*)(CR_WRAP_TOP_BASE_ADDRESS+clk_addr))
+
+#define RESET_DEVICE(address, reset) \
+    (reset)? writel(0, (void* )(CR_WRAP_TOP_BASE_ADDRESS+address)) \
+            : writel(RST_N_ASSERT, (void* )(CR_WRAP_TOP_BASE_ADDRESS+address))
 #endif
 
 /* Logic module base address */
-#define SOCLE_LOGIC_0_BASE              0xe7800000
+#define SOCLE_LOGIC_0_BASE              0xe7802000 /* add 0x2000 for RTL bug v.1042 */
 #define SOCLE_LOGIC_1_BASE              -1
 
-#define VEXPRESS_LOGIC_0_BASE           0xFC010000
-#define VEXPRESS_LOGIC_1_BASE           0xFC020000
 
 #define DEC_IO_SIZE_0                   DEC_IO_SIZE_MAX /* bytes */
-#define DEC_IO_SIZE_1                   DEC_IO_SIZE_MAX /* bytes */
+#define DEC_IO_SIZE_1                   0
 
-#define DEC_IRQ_0                       408
+#define DEC_IRQ_0                       319 /* RTL v.1042 */
 #define DEC_IRQ_1                       -1
 
-#define IS_G1(hw_id)                    (((hw_id) == 0x6731)? 1 : 0)
-#define IS_G2(hw_id)                    (((hw_id) == 0x6732)? 1 : 0)
 #define IS_VC8000D(hw_id)               (((hw_id) == 0x8001)? 1 : 0)
 
 static const int DecHwId[] = {
-  0x6731, /* G1 */
-  0x6732, /* G2 */
   0x8001  /* VC8000D */
 };
 
@@ -121,35 +131,61 @@ volatile unsigned char *reg = NULL;
 unsigned long multicorebase[HXDEC_MAX_CORES] = {
   SOCLE_LOGIC_0_BASE,
   SOCLE_LOGIC_1_BASE,
-  -1,
-  -1
 };
 
 int irq[HXDEC_MAX_CORES] = {
   DEC_IRQ_0,
   DEC_IRQ_1,
-  -1,
-  -1
 };
 
 unsigned int iosize[HXDEC_MAX_CORES] = {
   DEC_IO_SIZE_0,
   DEC_IO_SIZE_1,
-  -1,
-  -1
 };
 
 /* Because one core may contain multi-pipeline, so multicore base may be changed */
 unsigned long multicorebase_actual[HXDEC_MAX_CORES];
 
-
+/* SE1000 Maximum decoders is 1 */
 int elements = 1;
 
 #ifdef CLK_CFG
 struct clk *clk_cfg;
+#else
+/* CLOCK_WRAPER function */
+void enable_wraper_clocks(int enable)
+{
+	if (enable) {
+		ENABLE_CLOCK(CLK_VPU_DEC_AXI);
+	    ENABLE_CLOCK(CLK_VPU_DEC_CORE);
+    	ENABLE_CLOCK(CLK_VPU_DEC_APB);
+    	RESET_DEVICE(REG_VPU_DEC_AXI_RST_N, 1);
+    	RESET_DEVICE(REG_VPU_DEC_CORE_RST_N, 1);
+    	RESET_DEVICE(REG_VPU_DEC_APB_RST_N, 1);
+		//RTL V1042 bug: need to enable Encoder clock too to enable Decoder
+		//               fixed in V1044. To verify
+        ENABLE_CLOCK(CLK_VPU_ENC_AXI);
+        ENABLE_CLOCK(CLK_VPU_ENC_CORE);
+        ENABLE_CLOCK(CLK_VPU_ENC_APB);
+        RESET_DEVICE(REG_VPU_ENC_AXI_RST_N, 1);
+        RESET_DEVICE(REG_VPU_ENC_CORE_RST_N, 1);
+        RESET_DEVICE(REG_VPU_ENC_APB_RST_N, 1);
+
+	} else {
+        RESET_DEVICE(REG_VPU_DEC_AXI_RST_N, 0);
+        RESET_DEVICE(REG_VPU_DEC_CORE_RST_N, 0);
+        RESET_DEVICE(REG_VPU_DEC_APB_RST_N, 0);
+        //RTL V1042 bug: need to enable Encoder clock too to enable Decoder
+        //               fixed in V1044. To verify
+		//We should not disable encoder. Remove below lines in formal release. 
+        RESET_DEVICE(REG_VPU_ENC_AXI_RST_N, 0);
+        RESET_DEVICE(REG_VPU_ENC_CORE_RST_N, 0);
+        RESET_DEVICE(REG_VPU_ENC_APB_RST_N, 0);
+	}
+}	
+#endif
 int is_clk_on;
 struct timer_list timer;
-#endif
 
 /* module_param(name, type, perm) */
 module_param(base_port, ulong, 0);
@@ -215,9 +251,9 @@ DEFINE_SPINLOCK(owner_lock);
 DECLARE_WAIT_QUEUE_HEAD(dec_wait_queue);
 DECLARE_WAIT_QUEUE_HEAD(pp_wait_queue);
 DECLARE_WAIT_QUEUE_HEAD(hw_queue);
-#ifdef CLK_CFG
+//#ifdef CLK_CFG //lock for clock functions
 DEFINE_SPINLOCK(clk_lock);
-#endif
+//#endif
 
 #define DWL_CLIENT_TYPE_H264_DEC        1U
 #define DWL_CLIENT_TYPE_MPEG4_DEC       2U
@@ -242,82 +278,7 @@ static void ReadCoreConfig(hantrodec_t *dev) {
 
   for(c = 0; c < dev->cores; c++) {
     /* Decoder configuration */
-    if (IS_G1(dev->hw_id[c])) {
-      reg = ioread32((void*)(dev->hwregs[c] + HANTRODEC_SYNTH_CFG * 4));
-
-      tmp = (reg >> DWL_H264_E) & 0x3U;
-      if(tmp) printk(KERN_INFO "hantrodec: core[%d] has H264\n", c);
-      config.cfg[c] |= tmp ? 1 << DWL_CLIENT_TYPE_H264_DEC : 0;
-
-      tmp = (reg >> DWL_JPEG_E) & 0x01U;
-      if(tmp) printk(KERN_INFO "hantrodec: core[%d] has JPEG\n", c);
-      config.cfg[c] |= tmp ? 1 << DWL_CLIENT_TYPE_JPEG_DEC : 0;
-
-      tmp = (reg >> DWL_HJPEG_E) & 0x01U;
-      if(tmp) printk(KERN_INFO "hantrodec: core[%d] has HJPEG\n", c);
-      config.cfg[c] |= tmp ? 1 << DWL_CLIENT_TYPE_JPEG_DEC : 0;
-
-      tmp = (reg >> DWL_MPEG4_E) & 0x3U;
-      if(tmp) printk(KERN_INFO "hantrodec: core[%d] has MPEG4\n", c);
-      config.cfg[c] |= tmp ? 1 << DWL_CLIENT_TYPE_MPEG4_DEC : 0;
-
-      tmp = (reg >> DWL_VC1_E) & 0x3U;
-      if(tmp) printk(KERN_INFO "hantrodec: core[%d] has VC1\n", c);
-      config.cfg[c] |= tmp ? 1 << DWL_CLIENT_TYPE_VC1_DEC: 0;
-
-      tmp = (reg >> DWL_MPEG2_E) & 0x01U;
-      if(tmp) printk(KERN_INFO "hantrodec: core[%d] has MPEG2\n", c);
-      config.cfg[c] |= tmp ? 1 << DWL_CLIENT_TYPE_MPEG2_DEC : 0;
-
-      tmp = (reg >> DWL_VP6_E) & 0x01U;
-      if(tmp) printk(KERN_INFO "hantrodec: core[%d] has VP6\n", c);
-      config.cfg[c] |= tmp ? 1 << DWL_CLIENT_TYPE_VP6_DEC : 0;
-
-      reg = ioread32((void*)(dev->hwregs[c] + HANTRODEC_SYNTH_CFG_2 * 4));
-
-      /* VP7 and WEBP is part of VP8 */
-      mask =  (1 << DWL_VP8_E) | (1 << DWL_VP7_E) | (1 << DWL_WEBP_E);
-      tmp = (reg & mask);
-      if(tmp & (1 << DWL_VP8_E))
-        printk(KERN_INFO "hantrodec: core[%d] has VP8\n", c);
-      if(tmp & (1 << DWL_VP7_E))
-        printk(KERN_INFO "hantrodec: core[%d] has VP7\n", c);
-      if(tmp & (1 << DWL_WEBP_E))
-        printk(KERN_INFO "hantrodec: core[%d] has WebP\n", c);
-      config.cfg[c] |= tmp ? 1 << DWL_CLIENT_TYPE_VP8_DEC : 0;
-
-      tmp = (reg >> DWL_AVS_E) & 0x01U;
-      if(tmp) printk(KERN_INFO "hantrodec: core[%d] has AVS\n", c);
-      config.cfg[c] |= tmp ? 1 << DWL_CLIENT_TYPE_AVS_DEC: 0;
-
-      tmp = (reg >> DWL_RV_E) & 0x03U;
-      if(tmp) printk(KERN_INFO "hantrodec: core[%d] has RV\n", c);
-      config.cfg[c] |= tmp ? 1 << DWL_CLIENT_TYPE_RV_DEC : 0;
-
-      /* Post-processor configuration */
-      reg = ioread32((void*)(dev->hwregs[c] + HANTROPP_SYNTH_CFG * 4));
-
-      tmp = (reg >> DWL_G1_PP_E) & 0x01U;
-      if(tmp) printk(KERN_INFO "hantrodec: core[%d] has PP\n", c);
-      config.cfg[c] |= tmp ? 1 << DWL_CLIENT_TYPE_PP : 0;
-    } else if((IS_G2(dev->hw_id[c]))) {
-      reg = ioread32((void*)(dev->hwregs[c] + HANTRODEC_CFG_STAT * 4));
-
-      tmp = (reg >> DWL_G2_HEVC_E) & 0x01U;
-      if(tmp) printk(KERN_INFO "hantrodec: core[%d] has HEVC\n", c);
-      config.cfg[c] |= tmp ? 1 << DWL_CLIENT_TYPE_HEVC_DEC : 0;
-
-      tmp = (reg >> DWL_G2_VP9_E) & 0x01U;
-      if(tmp) printk(KERN_INFO "hantrodec: core[%d] has VP9\n", c);
-      config.cfg[c] |= tmp ? 1 << DWL_CLIENT_TYPE_VP9_DEC : 0;
-
-      /* Post-processor configuration */
-      reg = ioread32((void*)(dev->hwregs[c] + HANTRODECPP_SYNTH_CFG * 4));
-
-      tmp = (reg >> DWL_G2_PP_E) & 0x01U;
-      if(tmp) printk(KERN_INFO "hantrodec: core[%d] has PP\n", c);
-      config.cfg[c] |= tmp ? 1 << DWL_CLIENT_TYPE_PP : 0;
-    } else if((IS_VC8000D(dev->hw_id[c])) && config.its_main_core_id[c] < 0) {
+    if((IS_VC8000D(dev->hw_id[c])) && config.its_main_core_id[c] < 0) {
       reg = ioread32((void*)(dev->hwregs[c] + HANTRODEC_SYNTH_CFG * 4));
 
       tmp = (reg >> DWL_H264_E) & 0x3U;
@@ -475,41 +436,6 @@ int GetDecCoreID(hantrodec_t *dev, struct file* filp,
   return core_id;
 }
 
-#if 0
-static int hantrodec_choose_core(int is_g1) {
-  volatile unsigned char *reg = NULL;
-  unsigned int blk_base = 0x38320000;
-
-  PDEBUG("hantrodec_choose_core\n");
-  if (!request_mem_region(blk_base, 0x1000, "blk_ctl")) {
-    printk(KERN_INFO "blk_ctl: failed to reserve HW regs\n");
-    return -EBUSY;
-  }
-
-  reg = (volatile u8 *) ioremap_nocache(blk_base, 0x1000);
-
-  if (reg == NULL ) {
-    printk(KERN_INFO "blk_ctl: failed to ioremap HW regs\n");
-    if (reg)
-      iounmap((void *)reg);
-    release_mem_region(blk_base, 0x1000);
-    return -EBUSY;
-  }
-
-  // G1 use, set to 1; G2 use, set to 0, choose the one you are using
-  if (is_g1)
-    iowrite32(0x1, (void*)(reg + 0x14));  // VPUMIX only use G1, user should modify the reg according to platform design
-  else
-    iowrite32(0x0, (void*)(reg + 0x14)); // VPUMIX only use G2, user should modify the reg according to platform design
-
-  if (reg)
-    iounmap((void *)reg);
-  release_mem_region(blk_base, 0x1000);
-  PDEBUG("hantrodec_choose_core OK!\n");
-  return 0;
-}
-#endif
-
 long ReserveDecoder(hantrodec_t *dev, struct file* filp, unsigned long format) {
   long core = -1;
 
@@ -521,20 +447,6 @@ long ReserveDecoder(hantrodec_t *dev, struct file* filp, unsigned long format) {
   if(wait_event_interruptible(hw_queue,
                               GetDecCoreAny(&core, dev, filp, format) != 0 ))
     return -ERESTARTSYS;
-
-#if 0
-  if(IS_G1(dev->hw_id[core])) {
-    if (0 == hantrodec_choose_core(1))
-      printk("G1 is reserved\n");
-    else
-      return -1;
-  } else {
-    if (0 == hantrodec_choose_core(0))
-      printk("G2 is reserved\n");
-    else
-      return -1;
-  }
-#endif
 
   return core;
 }
@@ -661,7 +573,6 @@ long DecFlushRegs(hantrodec_t *dev, struct core_desc *core) {
 
   u32 id = core->id;
 
-#if 1
   ret = copy_from_user(dec_regs[id], core->regs, HANTRO_VC8000D_REGS*4);
   if (ret) {
     PDEBUG("copy_from_user failed, returned %li\n", ret);
@@ -673,69 +584,6 @@ long DecFlushRegs(hantrodec_t *dev, struct core_desc *core) {
   for(i = 2; i <= HANTRO_VC8000D_LAST_REG; i++) {
     iowrite32(dec_regs[id][i], (void*)(dev->hwregs[id] + i*4));
   }
-#else
-  if (IS_G1(dev->hw_id[id])) {
-    /* copy original dec regs to kernal space*/
-    ret = copy_from_user(dec_regs[id], core->regs, HANTRO_DEC_ORG_REGS*4);
-    if (ret) {
-      PDEBUG("copy_from_user failed, returned %li\n", ret);
-      return -EFAULT;
-    }
-#ifdef USE_64BIT_ENV
-    /* copy extended dec regs to kernal space*/
-    ret = copy_from_user(dec_regs[id] + HANTRO_DEC_EXT_FIRST_REG,
-                         core->regs + HANTRO_DEC_EXT_FIRST_REG,
-                         HANTRO_DEC_EXT_REGS*4);
-#endif
-    if (ret) {
-      PDEBUG("copy_from_user failed, returned %li\n", ret);
-      return -EFAULT;
-    }
-
-    /* write dec regs but the status reg[1] to hardware */
-    /* both original and extended regs need to be written */
-    for(i = 2; i <= HANTRO_DEC_ORG_LAST_REG; i++) {
-      iowrite32(dec_regs[id][i], dev->hwregs[id] + i*4);
-    }
-#ifdef USE_64BIT_ENV
-    for(i = HANTRO_DEC_EXT_FIRST_REG; i <= HANTRO_DEC_EXT_LAST_REG; i++)
-      iowrite32(dec_regs[id][i], dev->hwregs[id] + i*4);
-#endif
-  } else {
-    ret = copy_from_user(dec_regs[id], core->regs, HANTRO_G2_DEC_REGS*4);
-    if (ret) {
-      PDEBUG("copy_from_user failed, returned %li\n", ret);
-      return -EFAULT;
-    }
-
-    /* write all regs but the status reg[1] to hardware */
-    for(i = 2; i <= HANTRO_G2_DEC_LAST_REG; i++) {
-#if 0
-      if(i==2)
-        //dec_regs[id][i] = 0x78777777;
-        //dec_regs[id][i] = 0x78778787;
-        //c_regs[id][i] = 0x78888888; //64bit
-      {
-        printk("reg2=%08x\n",dec_regs[id][i]);
-        //dec_regs[id][i] = 0xF0F00000;//128bit 0xF0F0F000
-      }
-      //dec_regs[id][i] = 0xF0F0000F;//128bit 0xF0F00000 for big endian
-      if(i==58) {
-        printk("reg58=%08x\n",dec_regs[id][i]);
-        //dec_regs[id][i]= 0x210;//128bit
-        //dec_regs[id][i]= 0x110;//64bit
-      }
-      if(i==3) {
-        printk("reg3=%08x\n",dec_regs[id][i]);
-        //dec_regs[id][i] |= 0x00F00000;//128bit
-        //dec_regs[id][i]= 0x110;//64bit
-      }
-#endif
-      iowrite32(dec_regs[id][i], dev->hwregs[id] + i*4);
-
-    }
-  }
-#endif
 
   /* write the status register, which may start the decoder */
   iowrite32(dec_regs[id][1], (void*)(dev->hwregs[id] + 4));
@@ -790,7 +638,6 @@ long DecRefreshRegs(hantrodec_t *dev, struct core_desc *core) {
   long ret, i;
   u32 id = core->id;
 
-#if 1
   //for(i = 0; i <= HANTRO_DEC_ORG_LAST_REG; i++) {
   for(i = 0; i <= HANTRO_VC8000D_LAST_REG; i++) {
     dec_regs[id][i] = ioread32((void*)(dev->hwregs[id] + i*4));
@@ -801,56 +648,6 @@ long DecRefreshRegs(hantrodec_t *dev, struct core_desc *core) {
     PDEBUG("copy_to_user failed, returned %li\n", ret);
     return -EFAULT;
   }
-#else
-
-  if (IS_G1(dev->hw_id[id])) {
-#ifdef USE_64BIT_ENV
-    /* user has to know exactly what they are asking for */
-    if(core->size != (HANTRO_DEC_TOTAL_REGS * 4))
-      return -EFAULT;
-#else
-    /* user has to know exactly what they are asking for */
-    //if(core->size != (HANTRO_DEC_ORG_REGS * 4))
-    //  return -EFAULT;
-#endif
-    /* read all registers from hardware */
-    /* both original and extended regs need to be read */
-    for(i = 0; i <= HANTRO_DEC_ORG_LAST_REG; i++)
-      dec_regs[id][i] = ioread32(dev->hwregs[id] + i*4);
-#ifdef USE_64BIT_ENV
-    for(i = HANTRO_DEC_EXT_FIRST_REG; i <= HANTRO_DEC_EXT_LAST_REG; i++)
-      dec_regs[id][i] = ioread32(dev->hwregs[id] + i*4);
-#endif
-    /* put registers to user space*/
-    /* put original registers to user space*/
-    ret = copy_to_user(core->regs, dec_regs[id], HANTRO_DEC_ORG_REGS*4);
-#ifdef USE_64BIT_ENV
-    /*put extended registers to user space*/
-    ret = copy_to_user(core->regs + HANTRO_DEC_EXT_FIRST_REG,
-                       dec_regs[id] + HANTRO_DEC_EXT_FIRST_REG,
-                       HANTRO_DEC_EXT_REGS * 4);
-#endif
-    if (ret) {
-      PDEBUG("copy_to_user failed, returned %li\n", ret);
-      return -EFAULT;
-    }
-  } else {
-    /* user has to know exactly what they are asking for */
-    if(core->size != (HANTRO_G2_DEC_REGS * 4))
-      return -EFAULT;
-
-    /* read all registers from hardware */
-    for(i = 0; i <= HANTRO_G2_DEC_LAST_REG; i++)
-      dec_regs[id][i] = ioread32(dev->hwregs[id] + i*4);
-
-    /* put registers to user space*/
-    ret = copy_to_user(core->regs, dec_regs[id], HANTRO_G2_DEC_REGS*4);
-    if (ret) {
-      PDEBUG("copy_to_user failed, returned %li\n", ret);
-      return -EFAULT;
-    }
-  }
-#endif
   return 0;
 }
 
@@ -1107,9 +904,7 @@ static long hantrodec_ioctl(struct file *filp, unsigned int cmd,
                             unsigned long arg) {
   int err = 0;
   long tmp;
-#ifdef CLK_CFG
   unsigned long flags;
-#endif
 
 #ifdef HW_PERFORMANCE
   struct timeval *end_time_arg;
@@ -1139,19 +934,25 @@ static long hantrodec_ioctl(struct file *filp, unsigned int cmd,
   if (err)
     return -EFAULT;
 
-#ifdef CLK_CFG
   spin_lock_irqsave(&clk_lock, flags);
-  if (clk_cfg!=NULL && !IS_ERR(clk_cfg)&&(is_clk_on==0)) {
-    printk("turn on clock by user\n");
-    if (clk_enable(clk_cfg)) {
-      spin_unlock_irqrestore(&clk_lock, flags);
-      return -EFAULT;
-    } else
-      is_clk_on=1;
+  if (is_clk_on == 0) {
+#ifdef CLK_CFG	  
+  	if (clk_cfg!=NULL && !IS_ERR(clk_cfg))) {
+    	printk("turn on clock by user\n");
+    	if (clk_enable(clk_cfg)) {
+      		spin_unlock_irqrestore(&clk_lock, flags);
+      		return -EFAULT;
+    	} else
+      		is_clk_on=1;
+  	}
+#else
+	enable_wraper_clocks(1);
+	printk("enable encoder clock\n");
+	is_clk_on=1;
+#endif	
   }
   spin_unlock_irqrestore(&clk_lock, flags);
   mod_timer(&timer, jiffies + 10*HZ); /*the interval is 10s*/
-#endif
 
   switch (cmd) {
   case HANTRODEC_IOC_CLI: {
@@ -1366,9 +1167,7 @@ static long hantrodec_ioctl(struct file *filp, unsigned int cmd,
       return -EFAULT;
     }
     hw_id = ioread32((void*)(hantrodec_data.hwregs[id]));
-    if (IS_G1(hw_id >> 16) || IS_G2(hw_id >> 16))
-      __put_user(hw_id, (u32 *) arg);
-    else {
+    if (1) {
       hw_id = ioread32((void*)(hantrodec_data.hwregs[id] + HANTRODEC_HW_BUILD_ID_OFF));
       __put_user(hw_id, (u32 *) arg);
     }
@@ -1438,10 +1237,10 @@ static int hantrodec_release(struct inode *inode, struct file *filp) {
   return 0;
 }
 
-#ifdef CLK_CFG
 void hantrodec_disable_clk(unsigned long value) {
   unsigned long flags;
   /*entering this function means decoder is idle over expiry.So disable clk*/
+#ifdef CLK_CFG  
   if (clk_cfg!=NULL && !IS_ERR(clk_cfg)) {
     spin_lock_irqsave(&clk_lock, flags);
     if (is_clk_on==1) {
@@ -1451,8 +1250,17 @@ void hantrodec_disable_clk(unsigned long value) {
     }
     spin_unlock_irqrestore(&clk_lock, flags);
   }
+#else
+  spin_lock_irqsave(&clk_lock, flags);
+  if (is_clk_on==1) {
+      enable_wraper_clocks(0);
+      is_clk_on = 0;
+      printk("turned off decoder clock\n");
+  }
+  spin_unlock_irqrestore(&clk_lock, flags);
+
+#endif  
 }
-#endif
 
 /* VFS methods */
 static struct file_operations hantrodec_fops = {
@@ -1485,14 +1293,8 @@ int __init hantrodec_init(void) {
            multicorebase[0], irq[0]);
   } else {
     printk(KERN_INFO "hantrodec: Init multi core[0] at 0x%16lx\n"
-           "                     core[1] at 0x%16lx\n"
-           "                     core[2] at 0x%16lx\n"
-           "                     core[3] at 0x%16lx\n"
-           "          IRQ_0=%i\n"
-           "          IRQ_1=%i\n",
-           multicorebase[0], multicorebase[1],
-           multicorebase[2], multicorebase[3],
-           irq[0],irq[1]);
+                     "           IRQ_0=%i\n",
+           multicorebase[0], irq[0]);
   }
 
   hantrodec_data.cores = 0;
@@ -1536,6 +1338,9 @@ int __init hantrodec_init(void) {
     printk("try to enable handrodec clk failed!\n");
     goto err;
   }
+#else
+  enable_wraper_clocks(1);
+#endif  
   is_clk_on = 1;
 
   /*init a timer to disable clk*/
@@ -1543,7 +1348,6 @@ int __init hantrodec_init(void) {
   timer.function = &hantrodec_disable_clk;
   timer.expires =  jiffies + 100*HZ; //the expires time is 100s
   add_timer(&timer);
-#endif
 
   result = ReserveIO();
   if(result < 0) {
@@ -1650,10 +1454,11 @@ void __exit hantrodec_cleanup(void) {
     is_clk_on = 0;
     printk("turned off hantrodec clk\n");
   }
-
+#else
+  enable_wraper_clocks(0);
+#endif  
   /*delete timer*/
   del_timer(&timer);
-#endif
 
   unregister_chrdev(hantrodec_major, "hantrodec");
 
@@ -1867,10 +1672,6 @@ void ResetAsic(hantrodec_t * dev) {
       status = HANTRODEC_DEC_ABORT | HANTRODEC_DEC_IRQ_DISABLE;
       iowrite32(status, (void*)(dev->hwregs[j] + HANTRODEC_IRQ_STAT_DEC_OFF));
     }
-
-    if (IS_G1(dev->hw_id[j]))
-      /* reset PP */
-      iowrite32(0, (void*)(dev->hwregs[j] + HANTRO_IRQ_STAT_PP_OFF));
 
     for (i = 4; i < dev->iosize[j]; i += 4) {
       iowrite32(0, (void*)(dev->hwregs[j] + i));

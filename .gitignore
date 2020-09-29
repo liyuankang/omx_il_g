@@ -1,7 +1,7 @@
 vc8000d\out\
 vc8000d\works\
 *.o
-*.a`
+*.a
 *.ko
 *.mod
 *.cmd
