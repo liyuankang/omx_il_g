@@ -252,10 +252,10 @@ u32 *DWLMapRegisters(int mem_dev, /*unsigned long*/ addr_t base, unsigned int re
 
   /* map page aligned base */
   if (write)
-    io = (char *)mmap(0, map_size, PROT_READ | PROT_WRITE, MAP_SHARED, mem_dev,
+    io = (char *)mmap(0, map_size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS|MAP_SHARED, mem_dev,
                       base & ~page_alignment);
   else
-    io = (char *)mmap(0, map_size, PROT_READ, MAP_SHARED, mem_dev,
+    io = (char *)mmap(0, map_size, PROT_READ, MAP_ANONYMOUS|MAP_SHARED, mem_dev,
                       base & ~page_alignment);
 
   /* add offset from alignment to the io start address */
@@ -413,7 +413,7 @@ u32 DWLReadAsicID(u32 client_type) {
     }
 
     vcmd_mem_params.virt_status_cmdbuf_addr = (u32 *) mmap(0, vcmd_mem_params.status_cmdbuf_total_size, PROT_READ,
-                                                MAP_SHARED, fd_mem,
+                                                MAP_ANONYMOUS|MAP_SHARED, fd_mem,
                                                 vcmd_mem_params.phy_status_cmdbuf_addr);
 
     if(vcmd_mem_params.virt_status_cmdbuf_addr != MAP_FAILED) {
@@ -539,7 +539,7 @@ u32 DWLReadHwBuildID(u32 client_type) {
     }
 
     vcmd_mem_params.virt_status_cmdbuf_addr = (u32 *) mmap(0, vcmd_mem_params.status_cmdbuf_total_size, PROT_READ,
-                                                MAP_SHARED, fd_mem,
+                                                MAP_ANONYMOUS|MAP_SHARED, fd_mem,
                                                 vcmd_mem_params.phy_status_cmdbuf_addr);
 
     /* Read from swreg309 */
@@ -676,7 +676,7 @@ u32 DWLReadCoreHwBuildID(u32 core_id) {
     }
 
     vcmd_mem_params.virt_status_cmdbuf_addr = (u32 *) mmap(0, vcmd_mem_params.status_cmdbuf_total_size, PROT_READ,
-                                                MAP_SHARED, fd_mem,
+                                                MAP_ANONYMOUS|MAP_SHARED, fd_mem,
                                                 vcmd_mem_params.phy_status_cmdbuf_addr);
 
     /* Read from swreg309 */
@@ -1488,7 +1488,7 @@ i32 DWLMallocLinear(const void *instance, u32 size, struct DWLLinearMem *info) {
 
   /* Map the bus address to virtual address */
   info->virtual_address =
-    (u32 *)mmap(0, info->size, PROT_READ | PROT_WRITE, MAP_SHARED,
+    (u32 *)mmap(0, info->size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS|MAP_SHARED,
                 dec_dwl->fd_mem, params.bus_address);
 
 #ifdef SUPPORT_MMU

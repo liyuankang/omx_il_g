@@ -6,7 +6,7 @@
 
 # Architecture flags for gcc
 #ARCH= 
-CROSS_COMPILE=aarch64-linux-gnu-
+#CROSS_COMPILE=aarch64-linux-gnu-
 
 # C -compiler name, can be replaced by another compiler(replace gcc)
 CC = $(CROSS_COMPILE)gcc

@@ -57,6 +57,80 @@
 /* our own stuff */
 #include "hx280enc.h"
 
+/******           clock function         *****
+ * Define CLK_CFG to use Linux clk function  */
+
+#ifdef CLK_CFG
+#define CLK_ID       "hantroenc_clk"  /*this id should conform with platform define*/
+struct clk *clk_cfg;
+
+#else
+//Directly configure clock and reset registers
+#define CR_WRAP_TOP_BASE_ADDRESS    0x58100000
+#define CR_WRAP_TOP_BASE_LENGTH     0x000e0000
+#define CLK_VPU_DEC_AXI             0x000c2100
+#define CLK_VPU_DEC_CORE            0xc2104
+#define CLK_VPU_DEC_APB             0xc2108
+#define CLK_VPU_ENC_AXI             0xc210c
+#define CLK_VPU_ENC_CORE            0xc2110
+#define CLK_VPU_ENC_APB             0xc2114
+#define CLK_CG_EN                   0x00010000
+#define CLK_OUT_SEL                 0x00000100
+#define REG_VPU_DEC_AXI_RST_N       0xc3100
+#define REG_VPU_DEC_CORE_RST_N      0xc3104
+#define REG_VPU_DEC_APB_RST_N       0xc3108
+#define REG_VPU_ENC_AXI_RST_N       0xc310C
+#define REG_VPU_ENC_CORE_RST_N      0xc3110
+#define REG_VPU_ENC_APB_RST_N       0xc3114
+#define RST_N_MASK                  0xfffffffe
+#define RST_N_ASSERT                0x00000001
+#define ENABLE_CLOCK(clk_addr) \
+    iowrite32((CLK_CG_EN|CLK_OUT_SEL), (void*)(reg + clk_addr))
+
+#define RESET_DEVICE(address, reset) \
+    (reset)? writel(0, (void* )(reg+address)) \
+            : writel(RST_N_ASSERT, (void* )(reg+address))
+
+void enable_wraper_clocks(int enable)
+{
+    volatile unsigned char *reg = NULL;
+    reg = (volatile u8 *) ioremap_nocache(CR_WRAP_TOP_BASE_ADDRESS, CR_WRAP_TOP_BASE_LENGTH);
+
+    if (reg != NULL) {
+
+    if (enable) {
+        ENABLE_CLOCK(CLK_VPU_DEC_AXI);
+        ENABLE_CLOCK(CLK_VPU_DEC_CORE);
+        ENABLE_CLOCK(CLK_VPU_DEC_APB);
+        RESET_DEVICE(REG_VPU_DEC_AXI_RST_N, 1);
+        RESET_DEVICE(REG_VPU_DEC_CORE_RST_N, 1);
+        RESET_DEVICE(REG_VPU_DEC_APB_RST_N, 1);
+        //RTL V1042 bug: need to enable both ENC and DEC
+        //               fixed in V1044. To verify
+        ENABLE_CLOCK(CLK_VPU_ENC_AXI);
+        ENABLE_CLOCK(CLK_VPU_ENC_CORE);
+        ENABLE_CLOCK(CLK_VPU_ENC_APB);
+        RESET_DEVICE(REG_VPU_ENC_AXI_RST_N, 1);
+        RESET_DEVICE(REG_VPU_ENC_CORE_RST_N, 1);
+        RESET_DEVICE(REG_VPU_ENC_APB_RST_N, 1);
+
+    } else {
+        RESET_DEVICE(REG_VPU_DEC_AXI_RST_N, 0);
+        RESET_DEVICE(REG_VPU_DEC_CORE_RST_N, 0);
+        RESET_DEVICE(REG_VPU_DEC_APB_RST_N, 0);
+        //RTL V1042 bug: need to enable both ENC and DEC
+        //               fixed in V1044. To verify
+        //We should not disable encoder. Remove below lines in formal release. 
+        RESET_DEVICE(REG_VPU_ENC_AXI_RST_N, 0);
+        RESET_DEVICE(REG_VPU_ENC_CORE_RST_N, 0);
+        RESET_DEVICE(REG_VPU_ENC_APB_RST_N, 0);
+    }
+	}
+}
+
+#endif
+int is_clk_on = 0;
+
 /********variables declaration related with race condition**********/
 
 struct semaphore enc_core_sem;
@@ -68,13 +142,13 @@ DECLARE_WAIT_QUEUE_HEAD(enc_wait_queue);
 *****************************PORTING LAYER********************************
 -------------------------------------------------------------------------*/
 #define RESOURCE_SHARED_INTER_SUBSYS        0     /*0:no resource sharing inter subsystems 1: existing resource sharing*/
-#define SUBSYS_0_IO_ADDR                 0x90000   /*customer specify according to own platform*/
+#define SUBSYS_0_IO_ADDR                 0xe7830000   /*SE1000 RTL v.1042*/
 #define SUBSYS_0_IO_SIZE                 (40000 * 4)    /* bytes */
 
-#define SUBSYS_1_IO_ADDR                 0xA0000   /*customer specify according to own platform*/
+#define SUBSYS_1_IO_ADDR                 0xA0000   /*customer specify according to own platform, N/A for SE1000*/
 #define SUBSYS_1_IO_SIZE                 (20000 * 4)    /* bytes */
 
-#define INT_PIN_SUBSYS_0_VC8000E                    -1
+#define INT_PIN_SUBSYS_0_VC8000E                    321 /*SE1000 RTL v.1042 */
 #define INT_PIN_SUBSYS_0_CUTREE                     -1
 #define INT_PIN_SUBSYS_0_DEC400                     -1
 #define INT_PIN_SUBSYS_1_VC8000E                    -1
@@ -534,6 +608,24 @@ int __init hantroenc_init(void)
     int result = 0;
     int i, j;
 
+#ifdef CLK_CFG
+    /* first get clk instance pointer */
+    clk_cfg = clk_get(NULL, CLK_ID);
+    if (!clk_cfg||IS_ERR(clk_cfg)) {
+        printk("get handrodec clk failed!\n");
+        goto err;
+    }
+
+    /* prepare and enable clk */
+    if(clk_prepare_enable(clk_cfg)) {
+        printk("try to enable handrodec clk failed!\n");
+        goto err;
+    }
+#else
+    enable_wraper_clocks(1);
+#endif
+    is_clk_on = 1;
+	
     total_subsys_num = sizeof(subsys_array)/sizeof(SUBSYS_CONFIG);
     for (i = 0; i< total_subsys_num; i++)
     {
@@ -676,6 +768,16 @@ void __exit hantroenc_cleanup(void)
 
   ReleaseIO();
   vfree(hantroenc_data);
+
+#ifdef CLK_CFG
+  if (clk_cfg!=NULL && !IS_ERR(clk_cfg)) {
+    clk_disable_unprepare(clk_cfg);
+    is_clk_on = 0;
+    printk("turned off hantrodec clk\n");
+  }
+#else
+  enable_wraper_clocks(0);
+#endif
 
   unregister_chrdev(hantroenc_major, "hx280enc");
 

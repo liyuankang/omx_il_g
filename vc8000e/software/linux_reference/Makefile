@@ -111,6 +111,8 @@ endif
 SRC_EWL_PC := ewl_x280_file.c
 
 SRC_EWL_ARM = ewl_x280_common.c ewl_linux_lock.c
+#CJ trace
+CFLAGS += -DTRACE_EWL
 
 ifeq ($(POLLING),y)
     SRC_EWL_ARM += ewl_x280_polling.c

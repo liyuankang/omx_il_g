@@ -62,7 +62,7 @@ else
 endif
 
 CC += -I$(obj)
-EXTRA_CFLAGS += -g
+EXTRA_CFLAGS += -g -DHX280ENC_DEBUG
 
 # Print debugging messages from the device 
 #EXTRA_CFLAGS	+= -DHX280ENC_DEBUG

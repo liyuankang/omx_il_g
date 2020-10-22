@@ -21,7 +21,7 @@ else
 endif
 
 # base address and size (MB) for linear memory allocation (CJ:TBD)
-HLINA_START := 0x02000000
+HLINA_START := 0x6a000000
 HLINA_SIZE  := 250
 
 EXTRA_CFLAGS += $(DEBFLAGS)

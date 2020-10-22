@@ -207,7 +207,7 @@ USE_VCMD ?= n
 USE_RFC_WORD_ALIGN ?= n
 
 # Flags for >2GB file support.
-DEFINES += -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE
+DEFINES += -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -D_DWL_DEBUG
 # Input buffer contains multiple frames?
 # If yes, open it. If no, close it to improve sw performance.
 #DEFINES += -DHEVC_INPUT_MULTI_FRM
